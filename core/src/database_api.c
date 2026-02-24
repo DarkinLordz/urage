@@ -166,6 +166,71 @@ URAGE_API void urage_cursor_destroy(urage_cursor_t* cursor) {
     free(cursor);
 }
 
+// Simple string hash function (djb2 algorithm - very fast)
+static uint32_t hash_string(const char* str) {
+    uint32_t hash = 5381;
+    int c;
+    
+    while ((c = *str++)) {
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    }
+    
+    return hash;
+}
+
+
+URAGE_API urage_result_t urage_put_str(urage_db_t* db, const char* key,
+                                       const void* value, size_t value_size) {
+    if (!db || !db->internal_db) return URAGE_CLOSED;
+    if (!key) return URAGE_INVALID_ARG;
+    
+    // Hash the string key to uint32_t
+    uint32_t hashed_key = hash_string(key);
+    
+    printf("Debug: String key '%s' hashed to %u\n", key, hashed_key);
+    
+    // Use existing urage_put with hashed key
+    return urage_add(db, hashed_key, value, value_size);
+}
+
+URAGE_API urage_result_t urage_get_str(urage_db_t* db, const char* key,
+                                       void* buffer, size_t* buffer_size) {
+    if (!db || !db->internal_db) return URAGE_CLOSED;
+    if (!key || !buffer || !buffer_size) return URAGE_INVALID_ARG;
+    
+    // Hash the string key to uint32_t
+    uint32_t hashed_key = hash_string(key);
+    
+    printf("Debug: String key '%s' hashed to %u\n", key, hashed_key);
+    
+    // Use existing urage_get with hashed key
+    return urage_get(db, hashed_key, buffer, buffer_size);
+}
+
+URAGE_API urage_result_t urage_del_str(urage_db_t* db, const char* key) {
+    if (!db || !db->internal_db) return URAGE_CLOSED;
+    if (!key) return URAGE_INVALID_ARG;
+    
+    // Hash the string key to uint32_t
+    uint32_t hashed_key = hash_string(key);
+    
+    printf("Debug: String key '%s' hashed to %u\n", key, hashed_key);
+    
+    // Use existing urage_delete with hashed key
+    return urage_delete(db, hashed_key);
+}
+
+URAGE_API int urage_exists_str(urage_db_t* db, const char* key) {
+    if (!db || !db->internal_db) return 0;
+    if (!key) return 0;
+    
+    // Hash the string key to uint32_t
+    uint32_t hashed_key = hash_string(key);
+    
+    // Use existing urage_exists with hashed key
+    return urage_exists(db, hashed_key);
+}
+
 // ==================== STATISTICS ====================
 
 URAGE_API urage_result_t urage_stats(urage_db_t* db, urage_stats_t* stats) {
