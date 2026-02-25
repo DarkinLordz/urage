@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "type.h"
 
 #ifdef _WIN32
     #ifdef URAGE_BUILD_SHARED
@@ -220,6 +221,67 @@ URAGE_API const char* urage_error(urage_db_t* db);
  * @return URAGE_OK on success
  */
 URAGE_API urage_result_t urage_sync(urage_db_t* db);
+
+// ==================== TYPE SYSTEM ====================
+
+/**
+ * Define a new struct type
+ * @param db Database handle
+ * @param name Type name
+ * @param fields Array of field definitions
+ * @param field_count Number of fields
+ * @return URAGE_OK on success
+ */
+URAGE_API urage_result_t urage_define_type(urage_db_t* db, const char* name,
+                                           FieldDef* fields, uint32_t field_count);
+
+/**
+ * Delete a type definition
+ * @param db Database handle
+ * @param name Type name
+ * @return URAGE_OK on success
+ */
+URAGE_API urage_result_t urage_undefine_type(urage_db_t* db, const char* name);
+
+/**
+ * Get type information
+ * @param db Database handle
+ * @param name Type name
+ * @return TypeDef pointer (must be freed) or NULL if not found
+ */
+URAGE_API TypeDef* urage_get_type(urage_db_t* db, const char* name);
+
+/**
+ * List all defined types
+ * @param db Database handle
+ * @param names Output array of type names (caller must free)
+ * @param count Output count
+ * @return URAGE_OK on success
+ */
+URAGE_API urage_result_t urage_list_types(urage_db_t* db, char*** names, uint32_t* count);
+
+/**
+ * Add data using a defined type
+ * @param db Database handle
+ * @param type_name Type name
+ * @param key Key value
+ * @param field_values String with field=value pairs
+ * @return URAGE_OK on success
+ */
+URAGE_API urage_result_t urage_add_typed(urage_db_t* db, const char* type_name,
+                                         uint32_t key, const char* field_values);
+
+/**
+ * Get data using a defined type
+ * @param db Database handle
+ * @param type_name Type name
+ * @param key Key value
+ * @param output Buffer for formatted output
+ * @param output_size Size of output buffer
+ * @return URAGE_OK on success
+ */
+URAGE_API urage_result_t urage_get_typed(urage_db_t* db, const char* type_name,
+                                         uint32_t key, char* output, size_t output_size);
 
 #ifdef __cplusplus
 }

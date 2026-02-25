@@ -13,7 +13,7 @@ set(CORE_SOURCES
     core/src/btree.c
     core/src/storage.c
     core/src/pager.c
-    # utils.c is REMOVED - you don't have this file
+    core/src/type.c
 )
 
 # Create shared library

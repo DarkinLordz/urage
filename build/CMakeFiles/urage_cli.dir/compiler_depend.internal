@@ -3,6 +3,7 @@
 
 CMakeFiles/urage_cli.dir/cli/src/main.c.o
  /home/abdullahtnz/Desktop/uragedb/urage/cli/src/main.c
+ /home/abdullahtnz/Desktop/uragedb/urage/core/include/type.h
  /home/abdullahtnz/Desktop/uragedb/urage/core/include/urage.h
  /usr/include/alloca.h
  /usr/include/endian.h

@@ -1,8 +1,10 @@
 #include "urage.h"
-#include "database.h"  // Your existing internal header
+#include "database.h" 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "type.h"
+#include "type_funcs.h"
 
 struct urage_db {
     Database* internal_db;
@@ -274,4 +276,67 @@ URAGE_API urage_result_t urage_sync(urage_db_t* db) {
     pager_flush_all(internal->storage->pager);
     
     return URAGE_OK;
+}
+
+URAGE_API urage_result_t urage_add_typed(urage_db_t* db, const char* type_name,
+                                         uint32_t key, const char* field_values) {
+    if (!db || !db->internal_db) return URAGE_CLOSED;
+    
+    // Get type definition
+    TypeDef* type = type_get(db, type_name);
+    if (!type) return URAGE_NOT_FOUND;
+    
+    // Allocate buffer for the struct
+    void* buffer = calloc(1, type->size);
+    if (!buffer) {
+        free(type);
+        return URAGE_ERROR;
+    }
+    
+    // Parse field_values and fill buffer
+    urage_result_t result = type_serialize(type->fields, type->field_count, 
+                                          field_values, buffer);
+    
+    if (result == URAGE_OK) {
+        // Store with type:key prefix
+        char data_key[256];
+        snprintf(data_key, sizeof(data_key), "%s:%u", type_name, key);
+        result = urage_put_str(db, data_key, buffer, type->size);
+    }
+    
+    free(buffer);
+    free(type);
+    return result;
+}
+
+URAGE_API urage_result_t urage_get_typed(urage_db_t* db, const char* type_name,
+                                         uint32_t key, char* output, size_t output_size) {
+    if (!db || !db->internal_db) return URAGE_CLOSED;
+    
+    // Get type definition
+    TypeDef* type = type_get(db, type_name);
+    if (!type) return URAGE_NOT_FOUND;
+    
+    // Read data
+    char data_key[256];
+    snprintf(data_key, sizeof(data_key), "%s:%u", type_name, key);
+    
+    void* buffer = malloc(type->size);
+    if (!buffer) {
+        free(type);
+        return URAGE_ERROR;
+    }
+    
+    size_t size = type->size;
+    urage_result_t result = urage_get_str(db, data_key, buffer, &size);
+    
+    if (result == URAGE_OK) {
+        // Format output using type fields
+        result = type_deserialize(type->fields, type->field_count, 
+                                  buffer, output, output_size);
+    }
+    
+    free(buffer);
+    free(type);
+    return result;
 }

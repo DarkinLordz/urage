@@ -9,6 +9,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/urage.dir/core/src/pager.c.o.d"
   "CMakeFiles/urage.dir/core/src/storage.c.o"
   "CMakeFiles/urage.dir/core/src/storage.c.o.d"
+  "CMakeFiles/urage.dir/core/src/type.c.o"
+  "CMakeFiles/urage.dir/core/src/type.c.o.d"
   "liburage.pdb"
   "liburage.so"
 )

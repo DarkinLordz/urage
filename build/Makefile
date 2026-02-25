@@ -331,6 +331,30 @@ core/src/storage.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/urage.dir/build.make CMakeFiles/urage.dir/core/src/storage.c.s
 .PHONY : core/src/storage.c.s
 
+core/src/type.o: core/src/type.c.o
+.PHONY : core/src/type.o
+
+# target to build an object file
+core/src/type.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/urage.dir/build.make CMakeFiles/urage.dir/core/src/type.c.o
+.PHONY : core/src/type.c.o
+
+core/src/type.i: core/src/type.c.i
+.PHONY : core/src/type.i
+
+# target to preprocess a source file
+core/src/type.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/urage.dir/build.make CMakeFiles/urage.dir/core/src/type.c.i
+.PHONY : core/src/type.c.i
+
+core/src/type.s: core/src/type.c.s
+.PHONY : core/src/type.s
+
+# target to generate assembly for a file
+core/src/type.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/urage.dir/build.make CMakeFiles/urage.dir/core/src/type.c.s
+.PHONY : core/src/type.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -363,6 +387,9 @@ help:
 	@echo "... core/src/storage.o"
 	@echo "... core/src/storage.i"
 	@echo "... core/src/storage.s"
+	@echo "... core/src/type.o"
+	@echo "... core/src/type.i"
+	@echo "... core/src/type.s"
 .PHONY : help
 
 
