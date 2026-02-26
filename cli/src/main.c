@@ -70,21 +70,67 @@ int main(int argc, char* argv[]) {
         if (sscanf(line, "%s", cmd) != 1) continue;
         
         // ===== TYPE SYSTEM COMMANDS =====
-        if (strcmp(cmd, "define") == 0) {
-            // Parse: define name { fields }
-            char name[64];
-            char fields[256];
-            
-            // Very simple parsing - in reality you'd want better
-            if (sscanf(line, "define %63s { %[^}]", name, fields) == 2) {
-                printf("Defining type '%s' with fields: %s\n", name, fields);
-                printf("Type system not fully implemented yet\n");
-                // TODO: Parse fields and call urage_define_type
-            } else {
-                printf("Usage: define <name> { field1 type field2 type ... }\n");
-                printf("Example: define game { id int score int winner string(64) }\n");
+        // ===== TYPE SYSTEM COMMANDS =====
+if (strcmp(cmd, "define") == 0) {
+    // Parse: define name field1 type1 field2 type2 ...
+    char name[64];
+    char fields_str[256] = "";
+    
+    // Try to parse with braces first
+    int braces_matched = sscanf(line, "define %63s { %[^}] }", name, fields_str);
+    
+    // If that fails, try without braces
+    if (braces_matched < 2) {
+        // Extract everything after "define " as fields
+        char* fields_start = strchr(line, ' ');
+        if (fields_start) {
+            fields_start++; // Skip space
+            char* name_end = strchr(fields_start, ' ');
+            if (name_end) {
+                // Copy name
+                int name_len = name_end - fields_start;
+                strncpy(name, fields_start, name_len);
+                name[name_len] = '\0';
+                
+                // Copy fields
+                strcpy(fields_str, name_end + 1);
+                braces_matched = 2;
             }
         }
+    }
+    
+    if (braces_matched >= 2) {
+        printf("Defining type '%s' with fields: %s\n", name, fields_str);
+        
+        // Parse field definitions
+        FieldDef* fields = NULL;
+        uint32_t field_count = 0;
+        
+        if (type_parse_fields(fields_str, &fields, &field_count) == URAGE_OK) {
+            // Create the type
+            urage_result_t r = urage_define_type(db, name, fields, field_count);
+            
+            if (r == URAGE_OK) {
+                printf("✅ Type '%s' defined successfully (%u fields, %u bytes total)\n", 
+                       name, field_count, 
+                       field_count > 0 ? fields[field_count-1].offset + fields[field_count-1].size : 0);
+            } else if (r == URAGE_ERROR) {
+                printf("❌ Type '%s' already exists\n", name);
+            } else {
+                printf("❌ Failed to define type '%s' (error %d)\n", name, r);
+            }
+            
+            free(fields);
+        } else {
+            printf("❌ Invalid field definitions. Use: field type field type ...\n");
+            printf("   Example: id int score int winner string(64)\n");
+        }
+    } else {
+        printf("❌ Usage: define <name> { field1 type field2 type ... }\n");
+        printf("   Example: define game { id int score int winner string(64) }\n");
+        printf("   Or: define game id int score int winner string(64)\n");
+    }
+}
         else if (strcmp(cmd, "undefine") == 0) {
             if (sscanf(line, "undefine %63s", type_name) == 1) {
                 printf("Deleting type '%s'\n", type_name);
@@ -93,19 +139,39 @@ int main(int argc, char* argv[]) {
                 printf("Usage: undefine <name>\n");
             }
         }
-        else if (strcmp(cmd, "structs") == 0) {
-            printf("Defined types:\n");
-            // TODO: Call urage_list_types
-            printf("  (type listing not yet implemented)\n");
-        }
         else if (strcmp(cmd, "desc") == 0) {
-            if (sscanf(line, "desc %63s", type_name) == 1) {
-                printf("Description of type '%s':\n", type_name);
-                // TODO: Call urage_get_type and display fields
-            } else {
-                printf("Usage: desc <name>\n");
+    if (sscanf(line, "desc %63s", type_name) == 1) {
+        // Try to get the type
+        TypeDef* type = urage_get_type(db, type_name);
+        
+        if (type) {
+            printf("📌 Type: %s\n", type->name);
+            printf("   ID: %u\n", type->id);
+            printf("   Total size: %u bytes\n", type->size);
+            printf("   Fields (%u):\n", type->field_count);
+            
+            // Print each field with details
+            for (uint32_t i = 0; i < type->field_count; i++) {
+                FieldDef* f = &type->fields[i];
+                printf("     %d. %s ", i+1, f->name);
+                
+                if (f->type == TYPE_INT) {
+                    printf("(int, offset: %u, size: %u)\n", f->offset, f->size);
+                } else if (f->type == TYPE_STRING) {
+                    printf("(string[%u], offset: %u, size: %u)\n", f->size, f->offset, f->size);
+                } else {
+                    printf("(unknown type, offset: %u, size: %u)\n", f->offset, f->size);
+                }
             }
+            
+            free(type);
+        } else {
+            printf("❌ Type '%s' does not exist\n", type_name);
         }
+    } else {
+        printf("Usage: desc <typename>\n");
+    }
+}
         
         // ===== TYPED DATA COMMANDS =====
         else if (strcmp(cmd, "add") == 0) {

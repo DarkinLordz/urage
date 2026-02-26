@@ -143,7 +143,6 @@ CMakeFiles/urage.dir/core/src/database.c.o: /home/abdullahtnz/Desktop/uragedb/ur
 
 CMakeFiles/urage.dir/core/src/database_api.c.o: /home/abdullahtnz/Desktop/uragedb/urage/core/src/database_api.c \
   /home/abdullahtnz/Desktop/uragedb/urage/core/include/type.h \
-  /home/abdullahtnz/Desktop/uragedb/urage/core/include/type_funcs.h \
   /home/abdullahtnz/Desktop/uragedb/urage/core/include/urage.h \
   /home/abdullahtnz/Desktop/uragedb/urage/core/src/btree.h \
   /home/abdullahtnz/Desktop/uragedb/urage/core/src/constants.h \
@@ -438,8 +437,6 @@ CMakeFiles/urage.dir/core/src/type.c.o: /home/abdullahtnz/Desktop/uragedb/urage/
 /usr/include/asm-generic/errno-base.h:
 
 /home/abdullahtnz/Desktop/uragedb/urage/core/src/pager.c:
-
-/home/abdullahtnz/Desktop/uragedb/urage/core/include/type_funcs.h:
 
 /home/abdullahtnz/Desktop/uragedb/urage/core/src/database_api.c:
 

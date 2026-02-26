@@ -1,10 +1,9 @@
 #include "urage.h"
-#include "database.h" 
+#include "database.h"
+#include "type.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "type.h"
-#include "type_funcs.h"
 
 struct urage_db {
     Database* internal_db;
@@ -93,13 +92,10 @@ URAGE_API urage_result_t urage_delete(urage_db_t* db, uint32_t key) {
 URAGE_API int urage_exists(urage_db_t* db, uint32_t key) {
     if (!db || !db->internal_db) return 0;
     
-    char dummy[256];  // ← Make it larger
+    char dummy[256];
     size_t size = sizeof(dummy);
     DB_Result result = db_find(db->internal_db, key, dummy, &size);
     
-    // If it returns DB_SUCCESS, key exists
-    // If it returns DB_NOT_FOUND, key doesn't exist
-    // If it returns DB_ERROR but size > 0, key exists but buffer too small
     return (result == DB_SUCCESS) || (result == DB_ERROR && size > 0);
 }
 
@@ -107,7 +103,6 @@ URAGE_API int urage_exists(urage_db_t* db, uint32_t key) {
 
 struct urage_cursor {
     urage_db_t* db;
-    // TODO: Add cursor state when implemented in core
     uint32_t current_key;
     int valid;
 };
@@ -122,35 +117,28 @@ URAGE_API urage_cursor_t* urage_cursor_create(urage_db_t* db) {
     cursor->valid = 0;
     cursor->current_key = 0;
     
-    // TODO: Initialize cursor when core supports iteration
-    // For now, just return a placeholder
-    
     return cursor;
 }
 
 URAGE_API urage_result_t urage_cursor_first(urage_cursor_t* cursor) {
     if (!cursor) return URAGE_INVALID_ARG;
-    // TODO: Implement when core supports iteration
     cursor->valid = 0;
     return URAGE_NOT_FOUND;
 }
 
 URAGE_API urage_result_t urage_cursor_last(urage_cursor_t* cursor) {
     if (!cursor) return URAGE_INVALID_ARG;
-    // TODO: Implement when core supports iteration
     cursor->valid = 0;
     return URAGE_NOT_FOUND;
 }
 
 URAGE_API urage_result_t urage_cursor_next(urage_cursor_t* cursor) {
     if (!cursor) return URAGE_INVALID_ARG;
-    // TODO: Implement when core supports iteration
     return URAGE_NOT_FOUND;
 }
 
 URAGE_API urage_result_t urage_cursor_prev(urage_cursor_t* cursor) {
     if (!cursor) return URAGE_INVALID_ARG;
-    // TODO: Implement when core supports iteration
     return URAGE_NOT_FOUND;
 }
 
@@ -160,7 +148,6 @@ URAGE_API urage_result_t urage_cursor_get(urage_cursor_t* cursor,
     if (!cursor || !cursor->valid) return URAGE_NOT_FOUND;
     if (!key || !buffer || !buffer_size) return URAGE_INVALID_ARG;
     
-    // TODO: Implement when core supports iteration
     return URAGE_NOT_FOUND;
 }
 
@@ -168,44 +155,55 @@ URAGE_API void urage_cursor_destroy(urage_cursor_t* cursor) {
     free(cursor);
 }
 
-// Simple string hash function (djb2 algorithm - very fast)
+// ==================== STRING KEY HASHING ====================
+
 static uint32_t hash_string(const char* str) {
     uint32_t hash = 5381;
     int c;
     
     while ((c = *str++)) {
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+        hash = ((hash << 5) + hash) + c;
     }
     
     return hash;
 }
 
-
 URAGE_API urage_result_t urage_put_str(urage_db_t* db, const char* key,
                                        const void* value, size_t value_size) {
     if (!db || !db->internal_db) return URAGE_CLOSED;
-    if (!key) return URAGE_INVALID_ARG;
+    if (!key || !value || value_size == 0) return URAGE_INVALID_ARG;
     
     // Hash the string key to uint32_t
     uint32_t hashed_key = hash_string(key);
-    
     printf("Debug: String key '%s' hashed to %u\n", key, hashed_key);
     
-    // Use existing urage_put with hashed key
+    // Use existing urage_add with hashed key
     return urage_add(db, hashed_key, value, value_size);
 }
 
 URAGE_API urage_result_t urage_get_str(urage_db_t* db, const char* key,
                                        void* buffer, size_t* buffer_size) {
     if (!db || !db->internal_db) return URAGE_CLOSED;
-    if (!key || !buffer || !buffer_size) return URAGE_INVALID_ARG;
+    if (!key || !buffer_size) return URAGE_INVALID_ARG;
     
     // Hash the string key to uint32_t
     uint32_t hashed_key = hash_string(key);
-    
     printf("Debug: String key '%s' hashed to %u\n", key, hashed_key);
     
-    // Use existing urage_get with hashed key
+    // If buffer is NULL, we're just checking existence/size
+    if (buffer == NULL) {
+        // Create a dummy buffer to get the size
+        char dummy[1];
+        size_t dummy_size = 0;
+        DB_Result result = db_find(db->internal_db, hashed_key, dummy, &dummy_size);
+        if (result == DB_SUCCESS || (result == DB_ERROR && dummy_size > 0)) {
+            *buffer_size = dummy_size;
+            return URAGE_ERROR;  // Return error but with valid size
+        }
+        return URAGE_NOT_FOUND;
+    }
+    
+    // Normal get operation
     return urage_get(db, hashed_key, buffer, buffer_size);
 }
 
@@ -213,12 +211,7 @@ URAGE_API urage_result_t urage_del_str(urage_db_t* db, const char* key) {
     if (!db || !db->internal_db) return URAGE_CLOSED;
     if (!key) return URAGE_INVALID_ARG;
     
-    // Hash the string key to uint32_t
     uint32_t hashed_key = hash_string(key);
-    
-    printf("Debug: String key '%s' hashed to %u\n", key, hashed_key);
-    
-    // Use existing urage_delete with hashed key
     return urage_delete(db, hashed_key);
 }
 
@@ -226,10 +219,7 @@ URAGE_API int urage_exists_str(urage_db_t* db, const char* key) {
     if (!db || !db->internal_db) return 0;
     if (!key) return 0;
     
-    // Hash the string key to uint32_t
     uint32_t hashed_key = hash_string(key);
-    
-    // Use existing urage_exists with hashed key
     return urage_exists(db, hashed_key);
 }
 
@@ -241,11 +231,8 @@ URAGE_API urage_result_t urage_stats(urage_db_t* db, urage_stats_t* stats) {
     
     Database* internal = db->internal_db;
     
-    // Get page count from pager
     stats->page_count = internal->storage->pager->num_pages;
     
-    // Estimate keys from B-tree root
-    // This is a hack - you need proper counting
     void* root = pager_get_page(internal->index->pager, internal->index->root_page_num);
     NodeHeader* header = (NodeHeader*)root;
     
@@ -253,10 +240,10 @@ URAGE_API urage_result_t urage_stats(urage_db_t* db, urage_stats_t* stats) {
         LeafNode* leaf = (LeafNode*)root;
         stats->keys_count = leaf->num_cells;
     } else {
-        stats->keys_count = 0;  // Would need to traverse
+        stats->keys_count = 0;
     }
     
-    stats->btree_height = 1;  // Assume height 1
+    stats->btree_height = 1;
     stats->data_size = internal->storage->next_offset;
     
     return URAGE_OK;
@@ -270,7 +257,6 @@ URAGE_API const char* urage_error(urage_db_t* db) {
 URAGE_API urage_result_t urage_sync(urage_db_t* db) {
     if (!db || !db->internal_db) return URAGE_CLOSED;
     
-    // Flush all changes to disk using your existing pager
     Database* internal = db->internal_db;
     pager_flush_all(internal->index->pager);
     pager_flush_all(internal->storage->pager);
@@ -278,9 +264,52 @@ URAGE_API urage_result_t urage_sync(urage_db_t* db) {
     return URAGE_OK;
 }
 
+// ==================== TYPE SYSTEM IMPLEMENTATION ====================
+
+// Forward declarations of type functions (implemented in type.c)
+extern urage_result_t type_create(urage_db_t* db, const char* name, 
+                                  FieldDef* fields, uint32_t field_count);
+extern TypeDef* type_get(urage_db_t* db, const char* name);
+extern urage_result_t type_delete(urage_db_t* db, const char* name);
+extern urage_result_t type_list(urage_db_t* db, char*** names, uint32_t* count);
+extern urage_result_t type_serialize(FieldDef* fields, uint32_t field_count,
+                                     const char* field_values, void* buffer);
+extern urage_result_t type_deserialize(FieldDef* fields, uint32_t field_count,
+                                       const void* buffer, char* output, size_t output_size);
+
+URAGE_API urage_result_t urage_define_type(urage_db_t* db, const char* name,
+                                           FieldDef* fields, uint32_t field_count) {
+    if (!db || !db->internal_db) return URAGE_CLOSED;
+    if (!name || !fields || field_count == 0) return URAGE_INVALID_ARG;
+    
+    return type_create(db, name, fields, field_count);
+}
+
+URAGE_API urage_result_t urage_undefine_type(urage_db_t* db, const char* name) {
+    if (!db || !db->internal_db) return URAGE_CLOSED;
+    if (!name) return URAGE_INVALID_ARG;
+    
+    return type_delete(db, name);
+}
+
+URAGE_API TypeDef* urage_get_type(urage_db_t* db, const char* name) {
+    if (!db || !db->internal_db) return NULL;
+    if (!name) return NULL;
+    
+    return type_get(db, name);
+}
+
+URAGE_API urage_result_t urage_list_types(urage_db_t* db, char*** names, uint32_t* count) {
+    if (!db || !db->internal_db) return URAGE_CLOSED;
+    if (!names || !count) return URAGE_INVALID_ARG;
+    
+    return type_list(db, names, count);
+}
+
 URAGE_API urage_result_t urage_add_typed(urage_db_t* db, const char* type_name,
                                          uint32_t key, const char* field_values) {
     if (!db || !db->internal_db) return URAGE_CLOSED;
+    if (!type_name || !field_values) return URAGE_INVALID_ARG;
     
     // Get type definition
     TypeDef* type = type_get(db, type_name);
@@ -290,7 +319,7 @@ URAGE_API urage_result_t urage_add_typed(urage_db_t* db, const char* type_name,
     void* buffer = calloc(1, type->size);
     if (!buffer) {
         free(type);
-        return URAGE_ERROR;
+        return URAGE_MEMORY_ERROR;
     }
     
     // Parse field_values and fill buffer
@@ -312,28 +341,43 @@ URAGE_API urage_result_t urage_add_typed(urage_db_t* db, const char* type_name,
 URAGE_API urage_result_t urage_get_typed(urage_db_t* db, const char* type_name,
                                          uint32_t key, char* output, size_t output_size) {
     if (!db || !db->internal_db) return URAGE_CLOSED;
+    if (!type_name || !output || output_size == 0) return URAGE_INVALID_ARG;
+    
+    printf("🔍 Looking up type: '%s'\n", type_name);
     
     // Get type definition
     TypeDef* type = type_get(db, type_name);
-    if (!type) return URAGE_NOT_FOUND;
+    if (!type) {
+        printf("❌ Type '%s' not found in database\n", type_name);
+        return URAGE_NOT_FOUND;
+    }
+    
+    printf("✅ Found type: %s (ID: %u, size: %u bytes)\n", type->name, type->id, type->size);
     
     // Read data
     char data_key[256];
     snprintf(data_key, sizeof(data_key), "%s:%u", type_name, key);
+    printf("🔑 Data key: %s\n", data_key);
     
     void* buffer = malloc(type->size);
     if (!buffer) {
         free(type);
-        return URAGE_ERROR;
+        return URAGE_MEMORY_ERROR;
     }
     
     size_t size = type->size;
     urage_result_t result = urage_get_str(db, data_key, buffer, &size);
     
     if (result == URAGE_OK) {
+        printf("✅ Data retrieved, size: %zu bytes\n", size);
         // Format output using type fields
         result = type_deserialize(type->fields, type->field_count, 
                                   buffer, output, output_size);
+    } else if (result == URAGE_NOT_FOUND) {
+        printf("❌ Data key '%s' not found\n", data_key);
+        free(buffer);
+        free(type);
+        return URAGE_NOT_FOUND;
     }
     
     free(buffer);

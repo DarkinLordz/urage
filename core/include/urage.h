@@ -30,7 +30,8 @@ typedef enum {
     URAGE_FULL = -3,
     URAGE_IO_ERROR = -4,
     URAGE_INVALID_ARG = -5,
-    URAGE_CLOSED = -6
+    URAGE_CLOSED = -6,
+    URAGE_MEMORY_ERROR = -7
 } urage_result_t;
 
 // ==================== LIFECYCLE ====================
