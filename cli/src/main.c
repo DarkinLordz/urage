@@ -168,8 +168,14 @@ if (strcmp(cmd, "define") == 0) {
 }
         else if (strcmp(cmd, "undefine") == 0) {
             if (sscanf(line, "undefine %63s", type_name) == 1) {
-                printf("Deleting type '%s'\n", type_name);
-                // TODO: Call urage_undefine_type
+                urage_result_t r = urage_undefine_type(db, type_name);
+                if (r == URAGE_OK) {
+                    printf("✅ Type '%s' deleted\n", type_name);
+                } else if (r == URAGE_NOT_FOUND) {
+                    printf("❌ Type '%s' does not exist\n", type_name);
+                } else {
+                    printf("❌ Failed to delete type '%s' (error %d)\n", type_name, r);
+                }
             } else {
                 printf("Usage: undefine <name>\n");
             }
@@ -263,7 +269,9 @@ if (strcmp(cmd, "define") == 0) {
                 size_t size = sizeof(buffer);
                 urage_result_t r = urage_get(db, key, buffer, &size);
                 if (r == URAGE_OK) {
-                    buffer[size] = '\0';
+                    // Clamp to valid index if returned size fills the buffer.
+                    size_t end = (size < sizeof(buffer)) ? size : (sizeof(buffer) - 1);
+                    buffer[end] = '\0'; // works
                     printf("%u -> %s\n", key, buffer);
                 } else if (r == URAGE_NOT_FOUND) {
                     printf("Key %u not found\n", key);
@@ -316,7 +324,9 @@ else if (strcmp(cmd, "gets") == 0) {
         size_t size = sizeof(buffer);
         urage_result_t r = urage_get_str(db, str_key, buffer, &size);
         if (r == URAGE_OK) {
-            buffer[size] = '\0';
+            // Clamp to valid index if returned size fills the buffer.
+            size_t end = (size < sizeof(buffer)) ? size : (sizeof(buffer) - 1);
+            buffer[end] = '\0';
             printf("'%s' -> %s\n", str_key, buffer);
         } else if (r == URAGE_NOT_FOUND) {
             printf("Key '%s' not found\n", str_key);
